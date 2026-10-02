@@ -1,0 +1,17 @@
+{
+  "name": "JEE Swipe",
+  "short_name": "JEE Swipe",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#050908",
+  "theme_color": "#07110f",
+  "description": "A productive swipe-style JEE question feed.",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

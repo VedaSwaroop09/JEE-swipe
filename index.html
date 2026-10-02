@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#07110f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="JEE Swipe">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+  <title>JEE Swipe</title>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="brand">JEE <span>SWIPE</span></div>
+      <div class="subtitle">Scroll. Answer. Remember.</div>
+    </div>
+    <button id="shuffleBtn" class="icon-btn" aria-label="Shuffle questions">↻</button>
+  </header>
+
+  <nav class="filters" aria-label="Subject filter">
+    <button class="filter active" data-subject="All">All</button>
+    <button class="filter" data-subject="Physics">Physics</button>
+    <button class="filter" data-subject="Chemistry">Chemistry</button>
+    <button class="filter" data-subject="Math">Math</button>
+  </nav>
+
+  <main id="feed" class="feed" aria-live="polite"></main>
+
+  <div id="empty" class="empty hidden">
+    <h2>No questions yet</h2>
+    <p>Try another subject filter.</p>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
