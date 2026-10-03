@@ -1,165 +1,172 @@
-const QUESTIONS = [
-  {
-    id: 1, subject: "Physics",
-    q: "A particle executes SHM with amplitude A. At what displacement from the mean position are its kinetic and potential energies equal?",
-    options: ["A/2", "A/√2", "A/√3", "A/4"],
-    answer: 1,
-    explanation: "In SHM, total energy is (1/2)kA² and potential energy is (1/2)kx². Equality of KE and PE gives x² = A²/2, so |x| = A/√2."
-  },
-  {
-    id: 2, subject: "Chemistry",
-    q: "Which of the following is the strongest acid in aqueous solution?",
-    options: ["CH₃COOH", "HCOOH", "CCl₃COOH", "ClCH₂COOH"],
-    answer: 2,
-    explanation: "Electron-withdrawing chlorine atoms stabilize the conjugate base by the −I effect. Three chlorine atoms make trichloroacetic acid the strongest among these."
-  },
-  {
-    id: 3, subject: "Math",
-    q: "If f(x) = xˣ for x > 0, then f′(x) is:",
-    options: ["xˣ⁻¹", "xˣ(ln x + 1)", "xˣ ln x", "xˣ⁺¹"],
-    answer: 1,
-    explanation: "Logarithmic differentiation: ln f = x ln x, so f′/f = ln x + 1. Therefore f′ = xˣ(ln x + 1)."
-  },
-  {
-    id: 4, subject: "Chemistry",
-    q: "Which element has the highest first ionization enthalpy among B, C, N and O?",
-    options: ["B", "C", "N", "O"],
-    answer: 2,
-    explanation: "Nitrogen has a half-filled 2p³ configuration, which is especially stable. Oxygen has one paired 2p electron, making its removal slightly easier."
-  },
-  {
-    id: 5, subject: "Physics",
-    q: "A capacitor is charged and then disconnected from the battery. If its plate separation is increased, what happens to its potential difference?",
-    options: ["It decreases", "It remains constant", "It increases", "It becomes zero"],
-    answer: 2,
-    explanation: "After disconnection, charge Q remains constant. Since C = εA/d decreases when d increases and V = Q/C, the potential difference increases."
-  },
-  {
-    id: 6, subject: "Math",
-    q: "For a differentiable function f, if f′(x) > 0 throughout an interval, then f is:",
-    options: ["Constant", "Strictly increasing", "Strictly decreasing", "Periodic"],
-    answer: 1,
-    explanation: "By the mean value theorem, for x₂ > x₁ there exists c with f(x₂)-f(x₁)=f′(c)(x₂-x₁)>0. Hence f is strictly increasing."
-  },
-  {
-    id: 7, subject: "Physics",
-    q: "A charged particle enters a uniform magnetic field with velocity perpendicular to the field. Its kinetic energy:",
-    options: ["Increases", "Decreases", "Remains constant", "Becomes zero"],
-    answer: 2,
-    explanation: "The magnetic force is always perpendicular to velocity, so it does no work. Therefore speed and kinetic energy remain constant."
-  },
-  {
-    id: 8, subject: "Chemistry",
-    q: "Which coordination compound can show geometrical isomerism?",
-    options: ["[Co(NH₃)₆]³⁺", "[Pt(NH₃)₂Cl₂]", "[Zn(NH₃)₄]²⁺", "[Co(en)₃]³⁺"],
-    answer: 1,
-    explanation: "[Pt(NH₃)₂Cl₂] is square planar and can exist as cis and trans isomers."
-  }
-];
+const state = {
+  allQuestions: [],
+  filteredQuestions: [],
+  currentIndex: 0,
+  selectedSubject: "All",
+  answered: new Map(),
+};
 
-let currentSubject = "All";
-let pool = [];
-let answered = new Map();
+const feed = document.getElementById("feed");
+const filterButtons = [...document.querySelectorAll("[data-subject]")];
+
+async function loadQuestions() {
+  try {
+    const response = await fetch("./questions.json", { cache: "no-cache" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const data = await response.json();
+    state.allQuestions = Array.isArray(data) ? data : data.questions;
+
+    if (!Array.isArray(state.allQuestions) || state.allQuestions.length === 0) {
+      throw new Error("Question bank is empty or invalid.");
+    }
+
+    applyFilter(state.selectedSubject);
+  } catch (error) {
+    console.error("Could not load questions.json:", error);
+    feed.innerHTML = `
+      <section class="question-card error-card">
+        <div class="question-content">
+          <h2>Question bank couldn't be loaded</h2>
+          <p>Make sure <strong>questions.json</strong> is uploaded to the same GitHub Pages folder as <strong>app.js</strong>.</p>
+          <p class="muted">${error.message}</p>
+        </div>
+      </section>
+    `;
+  }
+}
 
 function shuffle(array) {
-  const a = [...array];
-  for (let i = a.length - 1; i > 0; i--) {
+  const copy = [...array];
+  for (let i = copy.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+    [copy[i], copy[j]] = [copy[j], copy[i]];
   }
-  return a;
+  return copy;
 }
 
-function buildPool() {
-  const filtered = currentSubject === "All"
-    ? QUESTIONS
-    : QUESTIONS.filter(q => q.subject === currentSubject);
-  pool = shuffle(filtered);
-  render();
+function applyFilter(subject) {
+  state.selectedSubject = subject;
+  state.currentIndex = 0;
+
+  const pool = subject === "All"
+    ? state.allQuestions
+    : state.allQuestions.filter(q => q.subject === subject);
+
+  state.filteredQuestions = shuffle(pool);
+  renderFeed();
 }
 
-function render() {
-  const feed = document.getElementById("feed");
-  const empty = document.getElementById("empty");
+function renderFeed() {
   feed.innerHTML = "";
 
-  if (!pool.length) {
-    empty.classList.remove("hidden");
-    return;
-  }
-  empty.classList.add("hidden");
-
-  pool.forEach((q, index) => {
-    const card = document.createElement("section");
-    card.className = "card";
-
-    const inner = document.createElement("div");
-    inner.className = "card-inner";
-
-    const meta = document.createElement("div");
-    meta.className = "meta";
-    meta.innerHTML = `<span>${q.subject}</span><span>${index + 1} / ${pool.length}</span>`;
-
-    const question = document.createElement("h1");
-    question.className = "question";
-    question.textContent = q.q;
-
-    const options = document.createElement("div");
-    options.className = "options";
-
-    const feedback = document.createElement("div");
-    feedback.className = "feedback";
-
-    q.options.forEach((option, optionIndex) => {
-      const btn = document.createElement("button");
-      btn.className = "option";
-      btn.textContent = `${String.fromCharCode(65 + optionIndex)}. ${option}`;
-      btn.addEventListener("click", () => answerQuestion(q, optionIndex, options, feedback));
-      options.appendChild(btn);
-    });
-
-    const hint = document.createElement("div");
-    hint.className = "swipe-hint";
-    hint.textContent = "Answer → then scroll for the next question";
-
-    inner.append(meta, question, options, feedback, hint);
-    card.appendChild(inner);
-    feed.appendChild(card);
+  state.filteredQuestions.forEach((question, index) => {
+    feed.appendChild(createQuestionCard(question, index));
   });
+
+  if (state.filteredQuestions.length === 0) {
+    feed.innerHTML = `
+      <section class="question-card error-card">
+        <div class="question-content">
+          <h2>No questions found</h2>
+          <p>Try another subject.</p>
+        </div>
+      </section>
+    `;
+  }
 }
 
-function answerQuestion(q, selected, optionsEl, feedbackEl) {
-  if (answered.has(q.id)) return;
+function createQuestionCard(question, index) {
+  const section = document.createElement("section");
+  section.className = "question-card";
+  section.dataset.index = index;
 
-  answered.set(q.id, selected);
-  const buttons = [...optionsEl.children];
+  const content = document.createElement("div");
+  content.className = "question-content";
 
-  buttons.forEach((btn, i) => {
-    btn.disabled = true;
-    if (i === q.answer) btn.classList.add("correct");
-    if (i === selected && selected !== q.answer) btn.classList.add("wrong");
+  const meta = document.createElement("div");
+  meta.className = "question-meta";
+  meta.innerHTML = `
+    <span>${escapeHtml(question.subject)}</span>
+    <span>${escapeHtml(question.chapter)}</span>
+    <span>${escapeHtml(question.difficulty)}</span>
+  `;
+
+  const number = document.createElement("div");
+  number.className = "question-number";
+  number.textContent = `Q${question.id}`;
+
+  const title = document.createElement("h2");
+  title.textContent = question.question;
+
+  const options = document.createElement("div");
+  options.className = "options";
+
+  question.options.forEach((option, optionIndex) => {
+    const button = document.createElement("button");
+    button.className = "option-button";
+    button.type = "button";
+    button.innerHTML = `<span class="option-letter">${String.fromCharCode(65 + optionIndex)}</span><span>${escapeHtml(option)}</span>`;
+
+    button.addEventListener("click", () => {
+      answerQuestion(section, question, optionIndex);
+    });
+
+    options.appendChild(button);
   });
 
-  const correct = selected === q.answer;
-  feedbackEl.className = `feedback show ${correct ? "correct" : "wrong"}`;
-  feedbackEl.innerHTML = `
-    <div class="feedback-title">${correct ? "✓ Correct" : "✕ Not quite"}</div>
-    <div class="explanation">${q.explanation}</div>
+  const feedback = document.createElement("div");
+  feedback.className = "feedback";
+  feedback.hidden = true;
+
+  content.append(number, meta, title, options, feedback);
+  section.appendChild(content);
+
+  return section;
+}
+
+function answerQuestion(section, question, selectedIndex) {
+  if (state.answered.has(question.id)) return;
+
+  state.answered.set(question.id, selectedIndex);
+
+  const buttons = [...section.querySelectorAll(".option-button")];
+  const feedback = section.querySelector(".feedback");
+  const correct = selectedIndex === question.answer;
+
+  buttons.forEach((button, index) => {
+    button.disabled = true;
+
+    if (index === question.answer) {
+      button.classList.add("correct");
+    } else if (index === selectedIndex) {
+      button.classList.add("wrong");
+    }
+  });
+
+  feedback.hidden = false;
+  feedback.className = `feedback ${correct ? "feedback-correct" : "feedback-wrong"}`;
+  feedback.innerHTML = `
+    <strong>${correct ? "Correct ✓" : "Incorrect ✗"}</strong>
+    <p>${escapeHtml(question.explanation)}</p>
   `;
 }
 
-document.querySelectorAll(".filter").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".filter").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    currentSubject = btn.dataset.subject;
-    buildPool();
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+filterButtons.forEach(button => {
+  button.addEventListener("click", () => {
+    filterButtons.forEach(b => b.classList.remove("active"));
+    button.classList.add("active");
+    applyFilter(button.dataset.subject);
   });
 });
 
-document.getElementById("shuffleBtn").addEventListener("click", () => {
-  buildPool();
-  document.getElementById("feed").scrollTo({top: 0, behavior: "smooth"});
-});
-
-buildPool();
+loadQuestions();
