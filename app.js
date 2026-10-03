@@ -1,7 +1,6 @@
 const state = {
   allQuestions: [],
   filteredQuestions: [],
-  currentIndex: 0,
   selectedSubject: "All",
   answered: new Map(),
 };
@@ -11,7 +10,7 @@ const filterButtons = [...document.querySelectorAll("[data-subject]")];
 
 async function loadQuestions() {
   try {
-    const response = await fetch("./questions.json", { cache: "no-cache" });
+    const response = await fetch("./questions.json?v=300", { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
     const data = await response.json();
@@ -21,15 +20,16 @@ async function loadQuestions() {
       throw new Error("Question bank is empty or invalid.");
     }
 
-    applyFilter(state.selectedSubject);
+    applyFilter("All");
   } catch (error) {
     console.error("Could not load questions.json:", error);
     feed.innerHTML = `
       <section class="question-card error-card">
         <div class="question-content">
+          <div class="question-number">JEE SWIPE</div>
           <h2>Question bank couldn't be loaded</h2>
-          <p>Make sure <strong>questions.json</strong> is uploaded to the same GitHub Pages folder as <strong>app.js</strong>.</p>
-          <p class="muted">${error.message}</p>
+          <p>Make sure <strong>questions.json</strong> is in the same GitHub Pages folder as <strong>app.js</strong>.</p>
+          <p class="muted">${escapeHtml(error.message)}</p>
         </div>
       </section>
     `;
@@ -47,7 +47,6 @@ function shuffle(array) {
 
 function applyFilter(subject) {
   state.selectedSubject = subject;
-  state.currentIndex = 0;
 
   const pool = subject === "All"
     ? state.allQuestions
@@ -55,6 +54,8 @@ function applyFilter(subject) {
 
   state.filteredQuestions = shuffle(pool);
   renderFeed();
+
+  if (feed) feed.scrollTo({ top: 0, behavior: "instant" });
 }
 
 function renderFeed() {
@@ -63,17 +64,6 @@ function renderFeed() {
   state.filteredQuestions.forEach((question, index) => {
     feed.appendChild(createQuestionCard(question, index));
   });
-
-  if (state.filteredQuestions.length === 0) {
-    feed.innerHTML = `
-      <section class="question-card error-card">
-        <div class="question-content">
-          <h2>No questions found</h2>
-          <p>Try another subject.</p>
-        </div>
-      </section>
-    `;
-  }
 }
 
 function createQuestionCard(question, index) {
@@ -84,17 +74,18 @@ function createQuestionCard(question, index) {
   const content = document.createElement("div");
   content.className = "question-content";
 
-  const meta = document.createElement("div");
-  meta.className = "question-meta";
-  meta.innerHTML = `
-    <span>${escapeHtml(question.subject)}</span>
-    <span>${escapeHtml(question.chapter)}</span>
-    <span>${escapeHtml(question.difficulty)}</span>
-  `;
-
   const number = document.createElement("div");
   number.className = "question-number";
   number.textContent = `Q${question.id}`;
+
+  const meta = document.createElement("div");
+  meta.className = "question-meta";
+
+  [question.subject, question.chapter, question.difficulty].forEach(value => {
+    const tag = document.createElement("span");
+    tag.textContent = value;
+    meta.appendChild(tag);
+  });
 
   const title = document.createElement("h2");
   title.textContent = question.question;
@@ -106,7 +97,15 @@ function createQuestionCard(question, index) {
     const button = document.createElement("button");
     button.className = "option-button";
     button.type = "button";
-    button.innerHTML = `<span class="option-letter">${String.fromCharCode(65 + optionIndex)}</span><span>${escapeHtml(option)}</span>`;
+
+    const letter = document.createElement("span");
+    letter.className = "option-letter";
+    letter.textContent = String.fromCharCode(65 + optionIndex);
+
+    const text = document.createElement("span");
+    text.textContent = option;
+
+    button.append(letter, text);
 
     button.addEventListener("click", () => {
       answerQuestion(section, question, optionIndex);
@@ -127,7 +126,6 @@ function createQuestionCard(question, index) {
 
 function answerQuestion(section, question, selectedIndex) {
   if (state.answered.has(question.id)) return;
-
   state.answered.set(question.id, selectedIndex);
 
   const buttons = [...section.querySelectorAll(".option-button")];
@@ -146,19 +144,14 @@ function answerQuestion(section, question, selectedIndex) {
 
   feedback.hidden = false;
   feedback.className = `feedback ${correct ? "feedback-correct" : "feedback-wrong"}`;
-  feedback.innerHTML = `
-    <strong>${correct ? "Correct ✓" : "Incorrect ✗"}</strong>
-    <p>${escapeHtml(question.explanation)}</p>
-  `;
-}
 
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+  const heading = document.createElement("strong");
+  heading.textContent = correct ? "Correct ✓" : "Incorrect ✗";
+
+  const explanation = document.createElement("p");
+  explanation.textContent = question.explanation;
+
+  feedback.replaceChildren(heading, explanation);
 }
 
 filterButtons.forEach(button => {
